@@ -23,13 +23,11 @@
 html {
   scroll-behavior: smooth;
   scroll-padding-top: 0;
-  background: #0d0d12;
 }
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   color: var(--white);
-  background: #0d0d12;
   overflow-x: hidden;
   min-height: 100vh;
   min-height: 100dvh;
@@ -49,13 +47,9 @@ body {
   height: 100vh;
   height: 100dvh;
   z-index: -2;
-}
-
-.bg-wrapper img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center;
+  background: #0d0d12;
+  will-change: transform;
+  transform: translateZ(0);
 }
 
 .bg-overlay {
@@ -67,7 +61,9 @@ body {
   height: 100dvh;
   z-index: -1;
   background: rgba(0, 0, 0, 0);
-  transition: background 0.1s linear;
+  transition: background 0.25s ease-out;
+  will-change: background;
+  transform: translateZ(0);
 }
 
 .bg-wrapper img {
@@ -75,7 +71,8 @@ body {
   height: 100%;
   object-fit: cover;
   object-position: center;
-  transition: filter 0.1s linear;
+  transition: filter 0.25s ease-out;
+  will-change: filter;
 }
 
 /* ===== TOP BAR ===== */
@@ -433,7 +430,9 @@ body {
   pointer-events: none !important;
   z-index: 2 !important;
   opacity: 0;
-  transition: opacity 0.25s ease;
+  transition: opacity 0.4s ease-out;
+  will-change: opacity;
+  transform: translateZ(0);
 }
 
 .skills-grid {
@@ -737,7 +736,7 @@ body {
 .fade-in {
   opacity: 0;
   transform: translateY(30px);
-  transition: opacity 0.8s ease, transform 0.8s ease;
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .fade-in.visible {
