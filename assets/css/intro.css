@@ -1,0 +1,108 @@
+/* ============================================================
+   Intro Animation Overlay — GPU only: transform + opacity
+   ============================================================ */
+
+#intro-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #000;
+  overflow: hidden;
+}
+
+/* Centers the device on screen */
+.intro-scene {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  will-change: transform, opacity;
+}
+
+/* Device wrapper — sized to the rendered image */
+.device-wrap {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+  opacity: 0;
+  transition: opacity 600ms ease;
+}
+
+.device-wrap img.device-img {
+  display: block;
+  max-width: 88vw;
+  max-height: 88vh;
+  object-fit: contain;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Screen: bg image clipped inside device screen area */
+.screen {
+  position: absolute;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 800ms ease;
+  /* Prevent image overflow before calibration class applies */
+  width: 0;
+  height: 0;
+}
+
+.screen img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  min-width: 100%;
+  min-height: 100%;
+}
+
+/* Phone — adjust values to match phone.png screen area */
+.device-wrap.phone .screen {
+  top: 14%;
+  left: 8%;
+  width: 84%;
+  height: 62%;
+  border-radius: 5%;
+  /* background: red; */
+}
+
+/* Laptop — adjust values to match laptop.png screen area */
+.device-wrap.laptop .screen {
+  top: 7%;
+  left: 11.5%;
+  width: 77%;
+  height: 72%;
+  border-radius: 1.5%;
+  /* background: red; */
+}
+
+/* Step 1: device fades in */
+.device-wrap.visible {
+  opacity: 1;
+}
+
+/* Step 2: screen-in-device fades in */
+.screen.visible {
+  opacity: 1;
+}
+
+/* Step 2b: screen fades out before zoom — prevents it filling viewport during scale */
+.screen.hide {
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+
+/* Step 3: whole scene zooms forward — laptop flies off screen */
+.intro-scene.zoom {
+  transform: scale(12);
+  opacity: 0;
+  transition: transform 2.2s cubic-bezier(0.4, 0, 0.15, 1), opacity 2s ease;
+}
+
+/* Step 4: overlay itself fades — reveals the real page behind */
+#intro-overlay.fade-out {
+  opacity: 0;
+  transition: opacity 1.1s ease;
+}
