@@ -49,7 +49,7 @@ I don’t just learn tech — I build with intent.
 ## 📸 Preview
 
 <p align="center">
-  <img src="portfolio-preview.png" width="80%" />
+  <img src="assets/images/portfolio-preview.png" width="80%" />
 </p>
 
 ---
