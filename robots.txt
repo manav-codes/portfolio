@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://manav.win/sitemap.xml
