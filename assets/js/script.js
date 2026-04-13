@@ -30,10 +30,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // PERFORMANCE TIER SYSTEM
     // =========================================================
     const TIERS = [
-        { label:'Ultra',  dpr:1.5,  interval:0,  waves:7, yScale:0.8,  distort:0.08 },
-        { label:'High',   dpr:1.0,  interval:0,  waves:7, yScale:0.7,  distort:0.06 },
-        { label:'Medium', dpr:0.75, interval:33, waves:5, yScale:0.4,  distort:0.03 },
-        { label:'Low',    dpr:0.5,  interval:50, waves:3, yScale:0.25, distort:0.02 },
+        { label:'Ultra',  dpr:1.5,  interval:0,  waves:7, yScale:1.2,  distort:0.12 },
+        { label:'High',   dpr:1.0,  interval:0,  waves:7, yScale:1.0,  distort:0.10 },
+        { label:'Medium', dpr:0.75, interval:33, waves:5, yScale:0.6,  distort:0.06 },
+        { label:'Low',    dpr:0.5,  interval:50, waves:3, yScale:0.4,  distort:0.04 },
     ];
 
     function initialTier() {
@@ -114,19 +114,21 @@ document.addEventListener('DOMContentLoaded', () => {
             vec3 wave(vec2 p,float offset,vec3 color){
                 float d=dot(p,p)*distortion; float x=p.x*(1.0+d);
                 float dist=abs(p.y+sin((x+time+offset)*xScale)*yScale);
-                return color*smoothstep(0.18,0.0,dist)*0.75;
+                float edge=smoothstep(0.06,0.0,dist);
+                return color*edge + color*edge*edge*0.6;
             }
             void main(){
                 vec2 invRes=vec2(1.0)/resolution;
                 vec2 p=(gl_FragCoord.xy*2.0-resolution)*invRes;
                 p*=(resolution.x<resolution.y)?(resolution.x*invRes.y):1.0;
                 vec3 col=vec3(0);
-                col+=wave(p,0.0,vec3(0.56,0.0,1.0)); col+=wave(p,1.8,vec3(0.0,0.0,1.0)); col+=wave(p,5.4,vec3(1.0,0.0,0.0));
+                col+=wave(p,0.0,vec3(1.0,0.0,0.3)); col+=wave(p,1.8,vec3(0.0,0.4,1.0)); col+=wave(p,5.4,vec3(1.0,0.6,0.0));
                 float hi=step(3.5,waveCount);
-                col+=wave(p,0.9,vec3(0.29,0.0,1.0))*hi; col+=wave(p,3.6,vec3(1.0,1.0,0.0))*hi;
+                col+=wave(p,0.9,vec3(0.6,0.0,1.0))*hi; col+=wave(p,3.6,vec3(0.0,1.0,0.2))*hi;
                 float ultra=step(5.5,waveCount);
-                col+=wave(p,2.7,vec3(0.0,0.8,0.0))*ultra; col+=wave(p,4.5,vec3(1.0,0.5,0.0))*ultra;
-                gl_FragColor=vec4(min(col,vec3(0.85)),1.0);
+                col+=wave(p,2.7,vec3(0.0,0.9,1.0))*ultra; col+=wave(p,4.5,vec3(1.0,0.0,0.8))*ultra;
+                col=col/(col+vec3(0.4))*1.4;
+                gl_FragColor=vec4(min(col,vec3(1.0)),1.0);
             }`;
 
         function compile(type, src) { const s=gl.createShader(type); gl.shaderSource(s,src); gl.compileShader(s); return s; }
@@ -145,7 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const uRes=gl.getUniformLocation(prog,'resolution'), uTime=gl.getUniformLocation(prog,'time');
         const uYScale=gl.getUniformLocation(prog,'yScale'), uDistort=gl.getUniformLocation(prog,'distortion');
         const uWaves=gl.getUniformLocation(prog,'waveCount');
-        gl.uniform1f(gl.getUniformLocation(prog,'xScale'), 0.6);
+        gl.uniform1f(gl.getUniformLocation(prog,'xScale'), 1.2);
 
         function resize() {
             const dpr=TIERS[tier].dpr, w=Math.max(1,Math.floor(window.innerWidth*dpr)), h=Math.max(1,Math.floor(window.innerHeight*dpr));
@@ -163,7 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
             trackFps(now);
             const interval=TIERS[tier].interval;
             if (interval>0 && now-lastFrameTime<interval) return;
-            lastFrameTime=now; t+=0.005;
+            lastFrameTime=now; t += (tier <= 1) ? 0.012 : 0.008;
             gl.uniform1f(uTime,t); gl.drawArrays(gl.TRIANGLES,0,6);
         }
         shaderCanvas._startLoop = () => { if (!rainbowRafId) { rainbowActive=true; rainbowRafId=requestAnimationFrame(loop); } };
@@ -183,9 +185,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 3-tier quality system
     const FLUID_TIERS = {
-        HIGH:   { SIM:128, DYE:512, PITERS:4, FRAME_MS:16 },
-        MEDIUM: { SIM:64,  DYE:256, PITERS:2, FRAME_MS:33 },
-        LOW:    { SIM:32,  DYE:128, PITERS:1, FRAME_MS:50 },
+        HIGH:   { SIM:128, DYE:1024, PITERS:4, FRAME_MS:16 },
+        MEDIUM: { SIM:64,  DYE:512,  PITERS:2, FRAME_MS:33 },
+        LOW:    { SIM:32,  DYE:256,  PITERS:1, FRAME_MS:50 },
     };
     function fluidInitialTier() {
         if (gpuTier==='low'||isMobile||ramGB<=2) return 'LOW';
@@ -266,8 +268,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const pDisp=mkProg(`precision mediump float; uniform sampler2D uD; varying vec2 v;
             void main(){
                 vec3 c=texture2D(uD,v).rgb;
-                // Stronger tonemap — compress highlights more aggressively
-                c = c / (c + vec3(0.7));
+                // Minimal tonemap — preserve saturation, only prevent overflow
+                c = c / (c + vec3(0.25));
                 gl_FragColor=vec4(c,1);
             }`);
         const uDp=U(pDisp,['uD']);
@@ -306,11 +308,27 @@ document.addEventListener('DOMContentLoaded', () => {
             gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
         }
 
-        const COLORS=[[0.0,0.9,1.0],[1.0,0.0,0.8]]; // cyan, stronger magenta
+        // 7 vivid hues — cycles periodically every ~2s independent of mouse movement
+        const COLORS=[
+            [1.0, 0.0, 0.2],  // red
+            [1.0, 0.5, 0.0],  // orange
+            [1.0, 1.0, 0.0],  // yellow
+            [0.0, 1.0, 0.3],  // green
+            [0.0, 1.0, 1.0],  // cyan
+            [0.2, 0.4, 1.0],  // blue
+            [0.8, 0.0, 1.0],  // violet
+        ];
         let ci=0;
+        let colorLastSwap=performance.now();
+        const COLOR_INTERVAL=2000; // ms between periodic color shifts
 
-        function splat(x,y,dx,dy){
-            const [r,g,b]=COLORS[ci^=1]; const force=isMobile?1500:2500;
+        function currentColor(now){
+            if(now-colorLastSwap>COLOR_INTERVAL){ ci=(ci+1)%COLORS.length; colorLastSwap=now; }
+            return COLORS[ci];
+        }
+
+        function splat(x,y,dx,dy,now){
+            const [r,g,b]=currentColor(now); const force=isMobile?1500:2500;
             use(pSplat); bt(0,vel.r); gl.uniform1i(uSp.uT,0);
             gl.uniform2f(uSp.pt,x,y); gl.uniform2fv(uSp.tx,tSIM);
             gl.uniform3f(uSp.col,dx*force,dy*force,0); gl.uniform1f(uSp.r,400);
@@ -318,7 +336,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             use(pSplat); bt(0,dye.r); gl.uniform1i(uSp.uT,0);
             gl.uniform2f(uSp.pt,x,y); gl.uniform2fv(uSp.tx,tDYE);
-            gl.uniform3f(uSp.col,r*.24,g*.24,b*.24); gl.uniform1f(uSp.r,600);
+            gl.uniform3f(uSp.col,r*.55,g*.55,b*.55); gl.uniform1f(uSp.r,600);
             blit(dye.w); dye.swap();
             fluidHasSplat=true;
             // Restart loop if it self-paused after dye faded
@@ -331,7 +349,7 @@ document.addEventListener('DOMContentLoaded', () => {
             blit(vel.w); vel.swap(); curProg=null;
 
             use(pAdvect); bt(0,vel.r);gl.uniform1i(uA.uVel,0); bt(1,dye.r);gl.uniform1i(uA.uSrc,1);
-            gl.uniform2fv(uA.tV,tSIM);gl.uniform2fv(uA.tS,tDYE);gl.uniform1f(uA.dt,.016);gl.uniform1f(uA.diss,.93);
+            gl.uniform2fv(uA.tV,tSIM);gl.uniform2fv(uA.tS,tDYE);gl.uniform1f(uA.dt,.016);gl.uniform1f(uA.diss,.96);
             blit(dye.w); dye.swap();
 
             if(!fluidHasSplat)return; // skip pressure when idle
@@ -398,7 +416,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const nx=e.clientX/window.innerWidth,ny=1-e.clientY/window.innerHeight;
             const dx=(nx-lx)*5,dy=(ny-ly)*5; lx=nx;ly=ny;
             if(Math.abs(dx)+Math.abs(dy)<.0001)return;
-            splat(nx,ny,dx,dy);
+            splat(nx,ny,dx,dy,e.timeStamp);
             clearTimeout(fluidIdleTimer);
             fluidIdleTimer=setTimeout(()=>{fluidHasSplat=false;},1500);
         },{passive:true});
@@ -407,7 +425,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if(!fluidVisible)return;
             const nx=e.touches[0].clientX/window.innerWidth,ny=1-e.touches[0].clientY/window.innerHeight;
             const dx=(nx-lx)*5,dy=(ny-ly)*5; lx=nx;ly=ny;
-            splat(nx,ny,dx,dy);
+            splat(nx,ny,dx,dy,e.timeStamp);
             clearTimeout(fluidIdleTimer);
             fluidIdleTimer=setTimeout(()=>{fluidHasSplat=false;},1500);
         },{passive:true});
@@ -444,7 +462,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!shaderReady) initShader();
             shaderCanvas._startLoop && shaderCanvas._startLoop();
             shaderCanvas.style.filter  = `blur(${transProg*24}px)`;
-            shaderCanvas.style.opacity = String((1-transProg)*0.35);
+            shaderCanvas.style.opacity = String((1-transProg)*0.72);
         } else {
             shaderCanvas._stopLoop && shaderCanvas._stopLoop();
             shaderCanvas.style.opacity = '0';
@@ -535,6 +553,19 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!target) return;
             const extra = item.getAttribute('href') === '#section-3' ? 80 : 0;
             window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY + extra, behavior:'smooth' });
+        });
+    });
+
+    // =========================================================
+    // PRANK: manav.win links scroll to top + cheeky alert
+    // =========================================================
+    document.querySelectorAll('a[href="https://manav.win"]').forEach(link => {
+        link.addEventListener('click', e => {
+            e.preventDefault();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            setTimeout(() => {
+                alert('You are already IN THE WEBSITE DUH!! 🙄');
+            }, 600);
         });
     });
 });

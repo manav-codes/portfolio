@@ -30,6 +30,7 @@ body {
   color: var(--white);
   overflow-x: hidden;
   min-height: 100vh;
+  min-height: 100dvh;
   position: relative;
 }
 
@@ -130,6 +131,7 @@ body {
 /* ===== HERO SECTION ===== */
 #section-1 {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -208,6 +210,7 @@ body {
 /* ===== SECTION COMMON ===== */
 .section {
   min-height: 100vh;
+  min-height: 100dvh;
   padding: var(--section-padding);
   padding-bottom: 120px;
 }
@@ -422,6 +425,7 @@ body {
   left: 0 !important;
   width: 100vw !important;
   height: 100vh !important;
+  height: 100dvh !important;
   pointer-events: none !important;
   z-index: 2 !important;
   opacity: 0;
@@ -788,6 +792,7 @@ body {
 .tool-cpp { background: #1e1e1e; }
 .tool-c { background: #1e1e1e; }
 .tool-kotlin { background: #1e1e1e; }
+.tool-huggingface { background: #1e1e1e; }
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 1024px) {
