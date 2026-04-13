@@ -86,15 +86,6 @@ Open index.html in your browser
 
 ---
 
-## 📊 GitHub Stats
-
-<p align="center">
-  <img src="https://github-readme-stats.vercel.app/api?username=manav-codes&show_icons=true&theme=tokyonight" />
-  <br/>
-  <img src="https://streak-stats.demolab.com?user=manav-codes&theme=tokyonight" />
-</p>
-
----
 
 ## 🤝 Connect
 
@@ -108,7 +99,3 @@ If you're building something ambitious or want to collaborate — reach out.
 > Consistency > Motivation
 
 ---
-
-<p align="center">
-  <img src="https://komarev.com/ghpvc/?username=manav-codes&style=flat-square&color=blue" />
-</p>
