@@ -41,6 +41,18 @@ body {
 .section { position: relative; z-index: 3; }
 .top-bar { z-index: 100; }
 
+#fluid {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.35s ease-out;
+}
+
 /* ===== FIXED BACKGROUND ===== */
 .bg-wrapper {
   position: fixed;

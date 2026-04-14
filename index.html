@@ -91,8 +91,8 @@
   <!-- WebGL Shader Background -->
   <canvas id="shader-canvas" style="position:fixed;top:0;left:0;width:100%;height:100vh;height:100dvh;display:block;z-index:0;opacity:0;"></canvas>
 
-  <!-- Smokey Fluid Canvas (fixed, shown only on section-4) -->
-  <canvas id="smokey-fluid-canvas"></canvas>
+  <!-- Fluid Cursor Background -->
+  <canvas id="fluid" aria-hidden="true"></canvas>
 
   <!-- Fixed Background -->
   <div class="bg-wrapper">
@@ -551,5 +551,9 @@
   </nav>
 
   <script src="./assets/js/script.js"></script>
+  <script type="module">
+    import useFluidCursor from "../fluidcursor.js";
+    useFluidCursor();
+  </script>
 </body>
 </html>

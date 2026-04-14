@@ -112,23 +112,27 @@ document.addEventListener('DOMContentLoaded', () => {
         const fragSrc = `precision mediump float;
             uniform vec2 resolution; uniform float time,xScale,yScale,distortion,waveCount;
             vec3 wave(vec2 p,float offset,vec3 color){
-                float d=dot(p,p)*distortion; float x=p.x*(1.0+d);
-                float dist=abs(p.y+sin((x+time+offset)*xScale)*yScale);
-                float edge=smoothstep(0.06,0.0,dist);
-                return color*edge + color*edge*edge*0.6;
+                float waveY = sin((p.x+time+offset)*xScale)*yScale*0.18;
+                float dist = abs(p.y - waveY);
+                float thickness = 0.1;
+                float core = smoothstep(thickness, 0.0, dist);
+                float soft = smoothstep(thickness * 2.2, 0.0, dist);
+                return color * (core * 0.65 + soft * 0.35);
             }
             void main(){
                 vec2 invRes=vec2(1.0)/resolution;
                 vec2 p=(gl_FragCoord.xy*2.0-resolution)*invRes;
                 p*=(resolution.x<resolution.y)?(resolution.x*invRes.y):1.0;
                 vec3 col=vec3(0);
-                col+=wave(p,0.0,vec3(1.0,0.0,0.3)); col+=wave(p,1.8,vec3(0.0,0.4,1.0)); col+=wave(p,5.4,vec3(1.0,0.6,0.0));
-                float hi=step(3.5,waveCount);
-                col+=wave(p,0.9,vec3(0.6,0.0,1.0))*hi; col+=wave(p,3.6,vec3(0.0,1.0,0.2))*hi;
-                float ultra=step(5.5,waveCount);
-                col+=wave(p,2.7,vec3(0.0,0.9,1.0))*ultra; col+=wave(p,4.5,vec3(1.0,0.0,0.8))*ultra;
-                col=col/(col+vec3(0.4))*1.4;
-                gl_FragColor=vec4(min(col,vec3(1.0)),1.0);
+                col+=wave(p,0.0,vec3(1.0,0.0,0.3)); 
+                col+=wave(p,1.8,vec3(0.0,0.4,1.0)); 
+                col+=wave(p,0.9,vec3(1.0,0.6,0.0));
+                col+=wave(p,2.7,vec3(0.6,0.0,1.0)); 
+                col+=wave(p,3.6,vec3(0.0,1.0,0.2));
+                col+=wave(p,4.5,vec3(0.0,1.0,1.0));
+                float centerMask = smoothstep(0.16, 0.0, abs(p.y));
+                col *= centerMask;
+                gl_FragColor=vec4(col,1.0);
             }`;
 
         function compile(type, src) { const s=gl.createShader(type); gl.shaderSource(s,src); gl.compileShader(s); return s; }
@@ -174,274 +178,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // =========================================================
-    // CUSTOM FLUID SIMULATION — fully optimized
-    // =========================================================
-    let fluidLoaded  = false;
-    let fluidRafId   = null;
-    let fluidRunning = false;
-    let fluidVisible = false;
-    let fluidIdleTimer = null;
-    let fluidHasSplat  = false;
-
-    // 3-tier quality system
-    const FLUID_TIERS = {
-        HIGH:   { SIM:128, DYE:1024, PITERS:4, FRAME_MS:16 },
-        MEDIUM: { SIM:64,  DYE:512,  PITERS:2, FRAME_MS:33 },
-        LOW:    { SIM:32,  DYE:256,  PITERS:1, FRAME_MS:50 },
-    };
-    function fluidInitialTier() {
-        if (gpuTier==='low'||isMobile||ramGB<=2) return 'LOW';
-        if (gpuTier==='mid'||ramGB<=4)           return 'MEDIUM';
-        return 'HIGH';
-    }
-
-    function loadFluid() {
-        if (fluidLoaded) return;
-        fluidLoaded = true;
-
-        const canvas = document.getElementById('smokey-fluid-canvas');
-        if (!canvas) return;
-
-        const gl = canvas.getContext('webgl', { alpha:false, antialias:false, depth:false, stencil:false, powerPreference:'high-performance' });
-        if (!gl) return;
-
-        const hf    = gl.getExtension('OES_texture_half_float');
-        const hfLin = gl.getExtension('OES_texture_half_float_linear');
-        // Use half-float only when linear filtering is also supported
-        // Otherwise fall back to UNSIGNED_BYTE which always supports LINEAR
-        const texType = (hf && hfLin) ? hf.HALF_FLOAT_OES : gl.UNSIGNED_BYTE;
-        const filter  = gl.LINEAR; // always LINEAR — UNSIGNED_BYTE always supports it
-
-        // Device-based initial tier, adaptive at runtime
-        let fTierName = fluidInitialTier();
-        let fTier = FLUID_TIERS[fTierName];
-        let SIM = fTier.SIM, DYE = fTier.DYE, PITERS = fTier.PITERS, FRAME_MS = fTier.FRAME_MS;
-        let tSIM = [1/SIM,1/SIM], tDYE = [1/DYE,1/DYE];
-
-        // Adaptive FPS for fluid
-        let fTierLocked=false, fTierLockTimer=null, paceFrames=0, paceTs=performance.now();
-        function lockFTier(ms){ fTierLocked=true; clearTimeout(fTierLockTimer); fTierLockTimer=setTimeout(()=>{fTierLocked=false;},ms); }
-        function adaptFTier(fps) {
-            if (fTierLocked) return;
-            let next = fTierName;
-            if      (fps<25 && fTierName!=='LOW')    next='LOW';
-            else if (fps<45 && fTierName==='HIGH')   next='MEDIUM';
-            else if (fps>55 && fTierName!=='HIGH')   next = fTierName==='LOW'?'MEDIUM':'HIGH';
-            if (next===fTierName) return;
-            fTierName=next; fTier=FLUID_TIERS[next];
-            SIM=fTier.SIM; DYE=fTier.DYE; PITERS=fTier.PITERS; FRAME_MS=fTier.FRAME_MS;
-            tSIM=[1/SIM,1/SIM]; tDYE=[1/DYE,1/DYE];
-            lockFTier(next==='HIGH'?4000:next==='MEDIUM'?3000:5000);
-        }
-
-        const V=`precision mediump float; attribute vec2 a; varying vec2 v; void main(){v=a*.5+.5;gl_Position=vec4(a,0,1);}`;
-        function mkProg(f){
-            function sh(t,s){const x=gl.createShader(t);gl.shaderSource(x,s);gl.compileShader(x);return x;}
-            const p=gl.createProgram(); gl.attachShader(p,sh(gl.VERTEX_SHADER,V)); gl.attachShader(p,sh(gl.FRAGMENT_SHADER,f)); gl.linkProgram(p); return p;
-        }
-        // Cache uniforms at compile time — never call getUniformLocation per frame
-        function U(p,names){const u={};names.forEach(n=>{u[n]=gl.getUniformLocation(p,n);});return u;}
-
-        const pAdvect=mkProg(`precision mediump float; uniform sampler2D uVel,uSrc; uniform vec2 tV,tS; uniform float dt,diss; varying vec2 v;
-            void main(){gl_FragColor=diss*texture2D(uSrc,v-dt*texture2D(uVel,v).xy*tV);}`);
-        const uA=U(pAdvect,['uVel','uSrc','tV','tS','dt','diss']);
-
-        const pDiverg=mkProg(`precision mediump float; uniform sampler2D uVel; uniform vec2 t; varying vec2 v;
-            void main(){float L=texture2D(uVel,v-vec2(t.x,0)).x,R=texture2D(uVel,v+vec2(t.x,0)).x,T=texture2D(uVel,v+vec2(0,t.y)).y,B=texture2D(uVel,v-vec2(0,t.y)).y;
-            gl_FragColor=vec4(.5*(R-L+T-B),0,0,1);}`);
-        const uDv=U(pDiverg,['uVel','t']);
-
-        const pPres=mkProg(`precision mediump float; uniform sampler2D uP,uD; uniform vec2 t; varying vec2 v;
-            void main(){float L=texture2D(uP,v-vec2(t.x,0)).x,R=texture2D(uP,v+vec2(t.x,0)).x,T=texture2D(uP,v+vec2(0,t.y)).x,B=texture2D(uP,v-vec2(0,t.y)).x;
-            gl_FragColor=vec4((L+R+B+T-texture2D(uD,v).x)*.25,0,0,1);}`);
-        const uPr=U(pPres,['uP','uD','t']);
-
-        const pGrad=mkProg(`precision mediump float; uniform sampler2D uP,uVel; uniform vec2 t; varying vec2 v;
-            void main(){float L=texture2D(uP,v-vec2(t.x,0)).x,R=texture2D(uP,v+vec2(t.x,0)).x,T=texture2D(uP,v+vec2(0,t.y)).x,B=texture2D(uP,v-vec2(0,t.y)).x;
-            gl_FragColor=vec4(texture2D(uVel,v).xy-.5*vec2(R-L,T-B),0,1);}`);
-        const uGr=U(pGrad,['uP','uVel','t']);
-
-        const pSplat=mkProg(`precision mediump float; uniform sampler2D uT; uniform vec2 pt,tx; uniform vec3 col; uniform float r; varying vec2 v;
-            void main(){vec2 d=(v-pt)*vec2(tx.x/tx.y,1); gl_FragColor=texture2D(uT,v)+vec4(col*exp(-dot(d,d)*r),0);}`);
-        const uSp=U(pSplat,['uT','pt','tx','col','r']);
-
-        const pDisp=mkProg(`precision mediump float; uniform sampler2D uD; varying vec2 v;
-            void main(){
-                vec3 c=texture2D(uD,v).rgb;
-                // Minimal tonemap — preserve saturation, only prevent overflow
-                c = c / (c + vec3(0.25));
-                gl_FragColor=vec4(c,1);
-            }`);
-        const uDp=U(pDisp,['uD']);
-
-        // Single quad buffer, bound once
-        const qbuf=gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER,qbuf);
-        gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
-
-        let curProg=null;
-        function use(p){
-            if(curProg===p)return; curProg=p; gl.useProgram(p);
-            const a=gl.getAttribLocation(p,'a'); gl.enableVertexAttribArray(a);
-            gl.bindBuffer(gl.ARRAY_BUFFER,qbuf); gl.vertexAttribPointer(a,2,gl.FLOAT,false,0,0);
-        }
-
-        function mkTex(w,h){
-            const t=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,t);
-            gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,filter);
-            gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,filter);
-            gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
-            gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
-            gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,w,h,0,gl.RGBA,texType,null);
-            const fb=gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER,fb);
-            gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t,0);
-            return {t,fb,w,h};
-        }
-        function dbl(w,h){let a=mkTex(w,h),b=mkTex(w,h); return{get r(){return a;},get w(){return b;},swap(){[a,b]=[b,a];}};}
-
-        let vel=dbl(SIM,SIM),dye=dbl(DYE,DYE),pres=dbl(SIM,SIM),div=mkTex(SIM,SIM);
-
-        function bt(unit,fbo){gl.activeTexture(gl.TEXTURE0+unit);gl.bindTexture(gl.TEXTURE_2D,fbo.t||fbo.r.t);}
-        function blit(fbo){
-            if(fbo){gl.bindFramebuffer(gl.FRAMEBUFFER,fbo.fb||fbo.r.fb);gl.viewport(0,0,fbo.w||fbo.r.w,fbo.h||fbo.r.h);}
-            else{gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,canvas.width,canvas.height);}
-            gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
-        }
-
-        // 7 vivid hues — cycles periodically every ~2s independent of mouse movement
-        const COLORS=[
-            [1.0, 0.0, 0.2],  // red
-            [1.0, 0.5, 0.0],  // orange
-            [1.0, 1.0, 0.0],  // yellow
-            [0.0, 1.0, 0.3],  // green
-            [0.0, 1.0, 1.0],  // cyan
-            [0.2, 0.4, 1.0],  // blue
-            [0.8, 0.0, 1.0],  // violet
-        ];
-        let ci=0;
-        let colorLastSwap=performance.now();
-        const COLOR_INTERVAL=2000; // ms between periodic color shifts
-
-        function currentColor(now){
-            if(now-colorLastSwap>COLOR_INTERVAL){ ci=(ci+1)%COLORS.length; colorLastSwap=now; }
-            return COLORS[ci];
-        }
-
-        function splat(x,y,dx,dy,now){
-            const [r,g,b]=currentColor(now); const force=isMobile?1500:2500;
-            use(pSplat); bt(0,vel.r); gl.uniform1i(uSp.uT,0);
-            gl.uniform2f(uSp.pt,x,y); gl.uniform2fv(uSp.tx,tSIM);
-            gl.uniform3f(uSp.col,dx*force,dy*force,0); gl.uniform1f(uSp.r,400);
-            blit(vel.w); vel.swap(); curProg=null;
-
-            use(pSplat); bt(0,dye.r); gl.uniform1i(uSp.uT,0);
-            gl.uniform2f(uSp.pt,x,y); gl.uniform2fv(uSp.tx,tDYE);
-            gl.uniform3f(uSp.col,r*.55,g*.55,b*.55); gl.uniform1f(uSp.r,600);
-            blit(dye.w); dye.swap();
-            fluidHasSplat=true;
-            // Restart loop if it self-paused after dye faded
-            if(!fluidRafId&&fluidVisible){fluidRunning=true;fluidRafId=requestAnimationFrame(loop);}
-        }
-
-        function step(){
-            use(pAdvect); bt(0,vel.r);gl.uniform1i(uA.uVel,0); bt(1,vel.r);gl.uniform1i(uA.uSrc,1);
-            gl.uniform2fv(uA.tV,tSIM);gl.uniform2fv(uA.tS,tSIM);gl.uniform1f(uA.dt,.016);gl.uniform1f(uA.diss,.94);
-            blit(vel.w); vel.swap(); curProg=null;
-
-            use(pAdvect); bt(0,vel.r);gl.uniform1i(uA.uVel,0); bt(1,dye.r);gl.uniform1i(uA.uSrc,1);
-            gl.uniform2fv(uA.tV,tSIM);gl.uniform2fv(uA.tS,tDYE);gl.uniform1f(uA.dt,.016);gl.uniform1f(uA.diss,.96);
-            blit(dye.w); dye.swap();
-
-            if(!fluidHasSplat)return; // skip pressure when idle
-
-            use(pDiverg); bt(0,vel.r);gl.uniform1i(uDv.uVel,0);gl.uniform2fv(uDv.t,tSIM); blit(div);
-
-            for(let i=0;i<PITERS;i++){
-                use(pPres); bt(0,pres.r);gl.uniform1i(uPr.uP,0); bt(1,div);gl.uniform1i(uPr.uD,1);
-                gl.uniform2fv(uPr.t,tSIM); blit(pres.w); pres.swap();
-            }
-
-            use(pGrad); bt(0,pres.r);gl.uniform1i(uGr.uP,0); bt(1,vel.r);gl.uniform1i(uGr.uVel,1);
-            gl.uniform2fv(uGr.t,tSIM); blit(vel.w); vel.swap();
-        }
-
-        let lastFT=0, dyeFadeCheck=0;
-        function loop(now){
-            if(!fluidRunning||!tabVisible){fluidRafId=null;return;}
-            fluidRafId=requestAnimationFrame(loop);
-
-            // Adaptive FPS measurement every 2s
-            paceFrames++;
-            if(now-paceTs>=2000){
-                adaptFTier(Math.round(paceFrames/((now-paceTs)*.001)));
-                paceFrames=0; paceTs=now;
-            }
-
-            if(now-lastFT<FRAME_MS)return; // frame cap
-            lastFT=now;
-            step();
-            use(pDisp); bt(0,dye.r); gl.uniform1i(uDp.uD,0); blit(null);
-
-            // Check dye fade every 30 frames — stop loop when fully dissipated
-            dyeFadeCheck++;
-            if(dyeFadeCheck>=30){
-                dyeFadeCheck=0;
-                if(!fluidHasSplat){
-                    gl.bindFramebuffer(gl.FRAMEBUFFER, dye.r.fb);
-                    const fmt  = gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_FORMAT);
-                    const type = gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_TYPE);
-                    // Pick correct ArrayBufferView for the returned type
-                    const buf  = (type === gl.UNSIGNED_BYTE) ? new Uint8Array(4) : new Uint16Array(4);
-                    gl.readPixels(DYE>>1, DYE>>1, 1, 1, fmt, type, buf);
-                    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-                    // For half-float, values are 16-bit; threshold ~3/255 ≈ 200 in half-float
-                    const threshold = (type === gl.UNSIGNED_BYTE) ? 3 : 200;
-                    if(buf[0]<threshold && buf[1]<threshold && buf[2]<threshold){
-                        fluidRunning=false; fluidRafId=null; return;
-                    }
-                }
-            }
-        }
-
-        function resize(){
-            const dpr=Math.min(window.devicePixelRatio,isMobile?1:1.5);
-            canvas.width=Math.floor(window.innerWidth*dpr);
-            canvas.height=Math.floor(window.innerHeight*dpr);
-        }
-        window.addEventListener('resize',resize); resize();
-
-        let lx=.5,ly=.5;
-        window.addEventListener('pointermove',e=>{
-            if(!fluidVisible)return;
-            const nx=e.clientX/window.innerWidth,ny=1-e.clientY/window.innerHeight;
-            const dx=(nx-lx)*5,dy=(ny-ly)*5; lx=nx;ly=ny;
-            if(Math.abs(dx)+Math.abs(dy)<.0001)return;
-            splat(nx,ny,dx,dy,e.timeStamp);
-            clearTimeout(fluidIdleTimer);
-            fluidIdleTimer=setTimeout(()=>{fluidHasSplat=false;},1500);
-        },{passive:true});
-
-        window.addEventListener('touchmove',e=>{
-            if(!fluidVisible)return;
-            const nx=e.touches[0].clientX/window.innerWidth,ny=1-e.touches[0].clientY/window.innerHeight;
-            const dx=(nx-lx)*5,dy=(ny-ly)*5; lx=nx;ly=ny;
-            splat(nx,ny,dx,dy,e.timeStamp);
-            clearTimeout(fluidIdleTimer);
-            fluidIdleTimer=setTimeout(()=>{fluidHasSplat=false;},1500);
-        },{passive:true});
-
-        canvas._startFluid=()=>{if(!fluidRafId){fluidRunning=true;fluidRafId=requestAnimationFrame(loop);}};
-        canvas._stopFluid =()=>{fluidRunning=false;};
-    }
-
-    // =========================================================
     // SCROLL + BACKGROUND
     // =========================================================
     const bgImage  = document.getElementById('bg-image');
     const bgOverlay= document.getElementById('bg-overlay');
+    const fluidCanvas = document.getElementById('fluid');
     const section3 = document.getElementById('section-3');
     const section4 = document.getElementById('section-4');
     let scrollRafPending = false;
+
+    // Find the globalgamejam.org link to use as trigger point
+    const ggjLink = Array.from(document.querySelectorAll('a')).find(a => a.textContent === 'globalgamejam.org');
+    let ggjLinkTop = 0;
+    if (ggjLink) {
+        ggjLinkTop = ggjLink.getBoundingClientRect().top + window.scrollY;
+    }
 
     function updateBackground() {
         scrollRafPending = false;
@@ -449,63 +200,53 @@ document.addEventListener('DOMContentLoaded', () => {
         const s4top = section4.getBoundingClientRect().top + window.scrollY;
         const s5top = document.getElementById('section-5').getBoundingClientRect().top + window.scrollY;
         const sy    = window.scrollY;
+        const vh = window.innerHeight;
+        const clamp01 = (v) => Math.max(0, Math.min(1, v));
+        const smooth01 = (v) => {
+            const t = clamp01(v);
+            return t * t * (3 - 2 * t);
+        };
 
-        const bgProg = Math.min(Math.max(sy / s3top, 0), 1);
+        const bgProg = smooth01(sy / s3top);
         bgImage.style.filter       = `blur(${bgProg*20}px)`;
         bgOverlay.style.background = `rgba(0,0,0,${bgProg})`;
 
-        const transLen  = s4top - s3top;
-        const transProg = Math.min(Math.max((sy - s3top) / transLen, 0), 1);
+        const rainbowInStart = s3top - vh * 0.45;
+        const rainbowInEnd = s3top + vh * 0.12;
+        const rainbowOutStart = s4top - vh * 0.28;
+        const rainbowOutEnd = s4top;
+
+        const rainbowIn = smooth01((sy - rainbowInStart) / (rainbowInEnd - rainbowInStart));
+        const rainbowOut = 1 - smooth01((sy - rainbowOutStart) / (rainbowOutEnd - rainbowOutStart));
+        const rainbowOpacity = 0.72 * rainbowIn * clamp01(rainbowOut);
+        const transProg = clamp01((sy - s3top) / (s4top - s3top));
+        const enableAnimatedBackground = rainbowOpacity > 0.01;
 
         // Rainbow
-        if (bgProg >= 1) {
+        if (enableAnimatedBackground) {
             if (!shaderReady) initShader();
             shaderCanvas._startLoop && shaderCanvas._startLoop();
             shaderCanvas.style.filter  = `blur(${transProg*24}px)`;
-            shaderCanvas.style.opacity = String((1-transProg)*0.72);
+            shaderCanvas.style.opacity = String(rainbowOpacity);
         } else {
             shaderCanvas._stopLoop && shaderCanvas._stopLoop();
             shaderCanvas.style.opacity = '0';
             shaderCanvas.style.filter  = 'none';
         }
 
-        // Fluid — trigger when section-4 enters viewport (s4top - innerHeight)
-        if (sy > s4top - 500) loadFluid();
-
-        const viewportTrigger = s4top - window.innerHeight;
-        const fluidTrigger = viewportTrigger + window.innerHeight * 0.5;
-        const fluidIn      = Math.min(Math.max((sy - fluidTrigger) / 200, 0), 1);
-        const fluidOut     = Math.min(Math.max((sy - (s5top - 300)) / 200, 0), 1);
-        const fluidOpacity = fluidIn * (1 - fluidOut) * 0.9;
-
-        const fc = document.getElementById('smokey-fluid-canvas');
-        if (fc) {
-            fluidVisible = fluidOpacity > 0.01;
-            fc.style.opacity = String(fluidOpacity);
-            if (fluidVisible) fc._startFluid && fc._startFluid();
-            else              fc._stopFluid  && fc._stopFluid();
+        if (fluidCanvas && ggjLinkTop > 0) {
+            const fluidFadeStart = ggjLinkTop - window.innerHeight * 0.22;
+            const fluidFadeEnd = ggjLinkTop + window.innerHeight * 0.06;
+            const fluidProgress = clamp01((sy - fluidFadeStart) / (fluidFadeEnd - fluidFadeStart));
+            fluidCanvas.style.opacity = String(fluidProgress);
         }
+
     }
 
     window.addEventListener('scroll', () => {
         if (!scrollRafPending) { scrollRafPending=true; requestAnimationFrame(updateBackground); }
     }, { passive:true });
     updateBackground();
-
-    // Preload fluid when the portfolio preview image comes into view
-    // (section-3, well before section-4) — zero lag by the time user gets there
-    const portfolioPreview = document.querySelector('a[href="https://manav.win"] img');
-    if (portfolioPreview) {
-        const preloadObserver = new IntersectionObserver((entries) => {
-            if (entries[0].isIntersecting) {
-                loadFluid();
-                preloadObserver.disconnect();
-            }
-        }, { threshold: 0.1 });
-        preloadObserver.observe(portfolioPreview);
-    } else {
-        setTimeout(loadFluid, 2000);
-    }
 
     // =========================================================
     // SCROLL ANIMATIONS
