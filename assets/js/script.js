@@ -112,24 +112,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const fragSrc = `precision mediump float;
             uniform vec2 resolution; uniform float time,xScale,yScale,distortion,waveCount;
             vec3 wave(vec2 p,float offset,vec3 color){
-                float waveY = sin((p.x+time+offset)*xScale)*yScale*0.18;
-                float dist = abs(p.y - waveY);
-                float thickness = 0.1;
-                float core = smoothstep(thickness, 0.0, dist);
-                float soft = smoothstep(thickness * 2.2, 0.0, dist);
-                return color * (core * 0.65 + soft * 0.35);
+                float x = p.x + sin((p.y*4.5 + time*1.6 + offset)*2.0) * 0.06;
+                float bend = sin((x*2.2 + time*1.1 + offset*0.8)*1.2) * yScale * 0.18;
+                float ripple = sin((x*5.6 - time*1.4 + offset*1.7)*0.75) * 0.03;
+                float dist = abs(p.y - bend - ripple);
+                float core = smoothstep(0.055, 0.0, dist);
+                float glow = smoothstep(0.14, 0.0, dist) * 0.35;
+                return color * (core + glow);
             }
             void main(){
                 vec2 invRes=vec2(1.0)/resolution;
                 vec2 p=(gl_FragCoord.xy*2.0-resolution)*invRes;
                 p*=(resolution.x<resolution.y)?(resolution.x*invRes.y):1.0;
                 vec3 col=vec3(0);
-                col+=wave(p,0.0,vec3(1.0,0.0,0.3)); 
-                col+=wave(p,1.8,vec3(0.0,0.4,1.0)); 
-                col+=wave(p,0.9,vec3(1.0,0.6,0.0));
-                col+=wave(p,2.7,vec3(0.6,0.0,1.0)); 
-                col+=wave(p,3.6,vec3(0.0,1.0,0.2));
-                col+=wave(p,4.5,vec3(0.0,1.0,1.0));
+                col = max(col, wave(p,0.0,vec3(1.0,0.0,0.3)));
+                col = max(col, wave(p,1.8,vec3(0.0,0.4,1.0)));
+                col = max(col, wave(p,0.9,vec3(1.0,0.6,0.0)));
+                col = max(col, wave(p,2.7,vec3(0.6,0.0,1.0)));
+                col = max(col, wave(p,3.6,vec3(0.0,1.0,0.2)));
+                col = max(col, wave(p,4.5,vec3(0.0,1.0,1.0)));
                 float centerMask = smoothstep(0.16, 0.0, abs(p.y));
                 col *= centerMask;
                 gl_FragColor=vec4(col,1.0);
