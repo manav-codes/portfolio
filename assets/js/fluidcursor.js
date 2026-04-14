@@ -18,8 +18,24 @@ const useFluidCursor = () => {
     BACK_COLOR: { r: 0.5, g: 0, b: 0 },
     TRANSPARENT: true,
   };
+  const isLowPowerDevice =
+    /Mobi|Android/i.test(navigator.userAgent) ||
+    (navigator.hardwareConcurrency || 4) <= 4 ||
+    (navigator.deviceMemory || 4) <= 4;
   let rafId = null;
   let sceneVisible = false;
+  let lastInteractionTime = performance.now();
+  let lastRenderTime = 0;
+  const ACTIVE_FRAME_MS = isLowPowerDevice ? 20 : 16;
+  const IDLE_FRAME_MS = isLowPowerDevice ? 34 : 28;
+  const IDLE_PRESSURE_ITERATIONS = Math.max(
+    10,
+    Math.floor(config.PRESSURE_ITERATIONS * 0.6)
+  );
+
+  function markInteraction() {
+    lastInteractionTime = performance.now();
+  }
 
   function scheduleUpdate() {
     if (config.PAUSED || rafId !== null) return;
@@ -33,6 +49,8 @@ const useFluidCursor = () => {
       rafId = null;
       return;
     }
+    lastUpdateTime = performance.now();
+    lastRenderTime = 0;
     scheduleUpdate();
   }
   function pointerPrototype() {
@@ -142,16 +160,20 @@ const useFluidCursor = () => {
       format,
       type,
       null
-      let sceneVisible = false;
     );
     const fbo = gl.createFramebuffer();
-        setPaused(document.visibilityState !== 'visible' || !sceneVisible);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
     gl.framebufferTexture2D(
       gl.FRAMEBUFFER,
-        sceneVisible = !!event.detail?.visible;
-        setPaused(document.visibilityState !== 'visible' || !sceneVisible);
+      gl.COLOR_ATTACHMENT0,
+      gl.TEXTURE_2D,
+      texture,
+      0
+    );
+    const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
     return status == gl.FRAMEBUFFER_COMPLETE;
-      setPaused(true);
+  }
+
   class Material {
     constructor(vertexShader, fragmentShaderSource) {
       this.vertexShader = vertexShader;
@@ -836,12 +858,20 @@ const useFluidCursor = () => {
   }
   updateKeywords();
   initFramebuffers();
-  let lastUpdateTime = Date.now();
+  let lastUpdateTime = performance.now();
   let colorUpdateTimer = 0.0;
   function update() {
     rafId = null;
     if (config.PAUSED) return;
-    const dt = calcDeltaTime();
+    const now = performance.now();
+    const idle = now - lastInteractionTime > 1200;
+    const minFrameMs = idle ? IDLE_FRAME_MS : ACTIVE_FRAME_MS;
+    if (now - lastRenderTime < minFrameMs) {
+      scheduleUpdate();
+      return;
+    }
+    const dt = calcDeltaTime(now);
+    lastRenderTime = now;
     if (resizeCanvas()) initFramebuffers();
     updateColors(dt);
     applyInputs();
@@ -849,10 +879,9 @@ const useFluidCursor = () => {
     render(null);
     scheduleUpdate();
   }
-  function calcDeltaTime() {
-    let now = Date.now();
+  function calcDeltaTime(now) {
     let dt = (now - lastUpdateTime) / 1000;
-    dt = Math.min(dt, 0.016666);
+    dt = Math.min(dt, 0.033333);
     lastUpdateTime = now;
     return dt;
   }
@@ -925,7 +954,11 @@ const useFluidCursor = () => {
       velocity.texelSizeY
     );
     gl.uniform1i(pressureProgram.uniforms.uDivergence, divergence.attach(0));
-    for (let i = 0; i < config.PRESSURE_ITERATIONS; i++) {
+    const pressureIterations =
+      performance.now() - lastInteractionTime < 400
+        ? config.PRESSURE_ITERATIONS
+        : IDLE_PRESSURE_ITERATIONS;
+    for (let i = 0; i < pressureIterations; i++) {
       gl.uniform1i(pressureProgram.uniforms.uPressure, pressure.read.attach(1));
       blit(pressure.write);
       pressure.swap();
@@ -1046,13 +1079,14 @@ const useFluidCursor = () => {
     let posY = scaleByPixelRatio(e.clientY);
     updatePointerDownData(pointer, -1, posX, posY);
     clickSplat(pointer);
+    if (!config.PAUSED) scheduleUpdate();
   });
   document.body.addEventListener('mousemove', function handleFirstMouseMove(e) {
     let pointer = pointers[0];
     let posX = scaleByPixelRatio(e.clientX);
     let posY = scaleByPixelRatio(e.clientY);
     let color = generateColor();
-    if (!config.PAUSED) update();
+    if (!config.PAUSED) scheduleUpdate();
     updatePointerMoveData(pointer, posX, posY, color);
     document.body.removeEventListener('mousemove', handleFirstMouseMove);
   });
@@ -1071,7 +1105,7 @@ const useFluidCursor = () => {
       for (let i = 0; i < touches.length; i++) {
         let posX = scaleByPixelRatio(touches[i].clientX);
         let posY = scaleByPixelRatio(touches[i].clientY);
-        if (!config.PAUSED) update();
+        if (!config.PAUSED) scheduleUpdate();
         updatePointerDownData(pointer, touches[i].identifier, posX, posY);
       }
       document.body.removeEventListener('touchstart', handleFirstTouchStart);
@@ -1125,6 +1159,7 @@ const useFluidCursor = () => {
     pointer.deltaX = 0;
     pointer.deltaY = 0;
     pointer.color = generateColor();
+    markInteraction();
   }
   function updatePointerMoveData(pointer, posX, posY, color) {
     pointer.prevTexcoordX = pointer.texcoordX;
@@ -1136,6 +1171,7 @@ const useFluidCursor = () => {
     pointer.moved =
       Math.abs(pointer.deltaX) > 0 || Math.abs(pointer.deltaY) > 0;
     pointer.color = color;
+    if (pointer.moved) markInteraction();
   }
   function updatePointerUpData(pointer) {
     pointer.down = false;

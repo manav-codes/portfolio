@@ -189,6 +189,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const section3 = document.getElementById('section-3');
     const section4 = document.getElementById('section-4');
     let scrollRafPending = false;
+    const layoutMetrics = { s3top: 1, s4top: 2, ggjTop: 0 };
+    const styleState = {
+        bgBlur: -1,
+        overlayAlpha: -1,
+        shaderBlur: -1,
+        shaderOpacity: -1,
+        fluidOpacity: -1,
+        fluidVisible: false,
+    };
 
     const cullingObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
@@ -196,29 +205,44 @@ document.addEventListener('DOMContentLoaded', () => {
             const visible = entry.isIntersecting;
             if (sectionId === 'section-3') experienceVisible = visible;
             if (sectionId === 'section-4') skillsVisible = visible;
-            window.dispatchEvent(new CustomEvent('portfolio:section-visibility', {
-                detail: { sectionId, visible }
-            }));
         });
-        updateBackground();
+        if (!scrollRafPending) { scrollRafPending = true; requestAnimationFrame(updateBackground); }
     }, { root: null, rootMargin: '18% 0px 18% 0px', threshold: 0 });
 
     if (section3) cullingObserver.observe(section3);
     if (section4) cullingObserver.observe(section4);
-    const enableAnimatedBackground = rainbowOpacity > 0.01 && experienceVisible;
 
     // Find the globalgamejam.org link to use as trigger point
     const ggjLink = Array.from(document.querySelectorAll('a')).find(a => a.textContent === 'globalgamejam.org');
-    let ggjLinkTop = 0;
-    if (ggjLink) {
-        ggjLinkTop = ggjLink.getBoundingClientRect().top + window.scrollY;
+
+    function recalcLayoutMetrics() {
+        layoutMetrics.s3top = Math.max(1, section3 ? section3.offsetTop : 1);
+        layoutMetrics.s4top = Math.max(layoutMetrics.s3top + 1, section4 ? section4.offsetTop : layoutMetrics.s3top + window.innerHeight);
+        if (ggjLink) layoutMetrics.ggjTop = ggjLink.offsetTop;
     }
+
+    recalcLayoutMetrics();
+
+    window.addEventListener('resize', () => {
+        recalcLayoutMetrics();
+        if (!scrollRafPending) { scrollRafPending = true; requestAnimationFrame(updateBackground); }
+    }, { passive: true });
+
+    if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(() => {
+            recalcLayoutMetrics();
+            if (!scrollRafPending) { scrollRafPending = true; requestAnimationFrame(updateBackground); }
+        });
+    }
+    window.addEventListener('load', () => {
+        recalcLayoutMetrics();
+        if (!scrollRafPending) { scrollRafPending = true; requestAnimationFrame(updateBackground); }
+    }, { once: true });
 
     function updateBackground() {
         scrollRafPending = false;
-        const s3top = section3.getBoundingClientRect().top + window.scrollY;
-        const s4top = section4.getBoundingClientRect().top + window.scrollY;
-        const s5top = document.getElementById('section-5').getBoundingClientRect().top + window.scrollY;
+        const s3top = Math.max(1, layoutMetrics.s3top);
+        const s4top = Math.max(s3top + 1, layoutMetrics.s4top);
         const sy    = window.scrollY;
         const vh = window.innerHeight;
         const clamp01 = (v) => Math.max(0, Math.min(1, v));
@@ -228,8 +252,15 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const bgProg = smooth01(sy / s3top);
-        bgImage.style.filter       = `blur(${bgProg*20}px)`;
-        bgOverlay.style.background = `rgba(0,0,0,${bgProg})`;
+        const bgBlur = bgProg * 20;
+        if (Math.abs(bgBlur - styleState.bgBlur) > 0.05) {
+            bgImage.style.filter = `blur(${bgBlur.toFixed(2)}px)`;
+            styleState.bgBlur = bgBlur;
+        }
+        if (Math.abs(bgProg - styleState.overlayAlpha) > 0.003) {
+            bgOverlay.style.background = `rgba(0,0,0,${bgProg.toFixed(3)})`;
+            styleState.overlayAlpha = bgProg;
+        }
 
         const rainbowInStart = s3top - vh * 0.45;
         const rainbowInEnd = s3top + vh * 0.12;
@@ -239,30 +270,50 @@ document.addEventListener('DOMContentLoaded', () => {
         const rainbowIn = smooth01((sy - rainbowInStart) / (rainbowInEnd - rainbowInStart));
         const rainbowOut = 1 - smooth01((sy - rainbowOutStart) / (rainbowOutEnd - rainbowOutStart));
         const rainbowOpacity = 0.72 * rainbowIn * clamp01(rainbowOut);
-        const transProg = clamp01((sy - s3top) / (s4top - s3top));
-        const enableAnimatedBackground = rainbowOpacity > 0.01;
+        const transProg = clamp01((sy - s3top) / Math.max(1, s4top - s3top));
+        const enableAnimatedBackground = rainbowOpacity > 0.01 && experienceVisible;
 
         // Rainbow
         if (enableAnimatedBackground) {
             if (!shaderReady) initShader();
             shaderCanvas._startLoop && shaderCanvas._startLoop();
-            shaderCanvas.style.filter  = `blur(${transProg*8}px)`;
-            shaderCanvas.style.opacity = String(rainbowOpacity);
+            const shaderBlur = transProg * 8;
+            if (Math.abs(shaderBlur - styleState.shaderBlur) > 0.05) {
+                shaderCanvas.style.filter = `blur(${shaderBlur.toFixed(2)}px)`;
+                styleState.shaderBlur = shaderBlur;
+            }
+            if (Math.abs(rainbowOpacity - styleState.shaderOpacity) > 0.003) {
+                shaderCanvas.style.opacity = rainbowOpacity.toFixed(3);
+                styleState.shaderOpacity = rainbowOpacity;
+            }
         } else {
             shaderCanvas._stopLoop && shaderCanvas._stopLoop();
-            shaderCanvas.style.opacity = '0';
-            shaderCanvas.style.filter  = 'none';
+            if (styleState.shaderOpacity !== 0) {
+                shaderCanvas.style.opacity = '0';
+                styleState.shaderOpacity = 0;
+            }
+            if (styleState.shaderBlur !== 0) {
+                shaderCanvas.style.filter = 'none';
+                styleState.shaderBlur = 0;
+            }
         }
 
-        if (fluidCanvas && ggjLinkTop > 0) {
-            const fluidFadeStart = ggjLinkTop - window.innerHeight * 0.22;
-            const fluidFadeEnd = ggjLinkTop + window.innerHeight * 0.06;
+        if (fluidCanvas && layoutMetrics.ggjTop > 0) {
+            const fluidFadeStart = layoutMetrics.ggjTop - window.innerHeight * 0.22;
+            const fluidFadeEnd = layoutMetrics.ggjTop + window.innerHeight * 0.06;
             const fluidProgress = clamp01((sy - fluidFadeStart) / (fluidFadeEnd - fluidFadeStart));
             const fluidVisible = skillsVisible && fluidProgress > 0.01;
-            fluidCanvas.style.opacity = fluidVisible ? String(fluidProgress) : '0';
-            window.dispatchEvent(new CustomEvent('portfolio:fluid-visibility', {
-                detail: { visible: fluidVisible }
-            }));
+            const fluidOpacity = fluidVisible ? fluidProgress : 0;
+            if (Math.abs(fluidOpacity - styleState.fluidOpacity) > 0.003) {
+                fluidCanvas.style.opacity = fluidOpacity.toFixed(3);
+                styleState.fluidOpacity = fluidOpacity;
+            }
+            if (fluidVisible !== styleState.fluidVisible) {
+                styleState.fluidVisible = fluidVisible;
+                window.dispatchEvent(new CustomEvent('portfolio:fluid-visibility', {
+                    detail: { visible: fluidVisible }
+                }));
+            }
         }
 
     }
