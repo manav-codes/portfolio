@@ -30,10 +30,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // PERFORMANCE TIER SYSTEM
     // =========================================================
     const TIERS = [
-        { label:'Ultra',  dpr:1.5,  interval:0,  waves:7, yScale:1.2,  distort:0.12 },
-        { label:'High',   dpr:1.0,  interval:0,  waves:7, yScale:1.0,  distort:0.10 },
-        { label:'Medium', dpr:0.75, interval:33, waves:5, yScale:0.6,  distort:0.06 },
-        { label:'Low',    dpr:0.5,  interval:50, waves:3, yScale:0.4,  distort:0.04 },
+        { label:'Ultra',  dpr:1.0,  interval:16, waves:6, yScale:1.0,  distort:0.08 },
+        { label:'High',   dpr:0.85, interval:20, waves:5, yScale:0.9,  distort:0.07 },
+        { label:'Medium', dpr:0.6,  interval:33, waves:4, yScale:0.55, distort:0.05 },
+        { label:'Low',    dpr:0.45, interval:50, waves:3, yScale:0.35, distort:0.04 },
     ];
 
     function initialTier() {
@@ -102,6 +102,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let shaderReady   = false;
     let rainbowActive = false;
     let rainbowRafId  = null;
+    let experienceVisible = false;
+    let skillsVisible = false;
 
     function initShader() {
         const gl = shaderCanvas.getContext('webgl', { powerPreference:'high-performance', antialias:false, depth:false, stencil:false })
@@ -112,12 +114,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const fragSrc = `precision mediump float;
             uniform vec2 resolution; uniform float time,xScale,yScale,distortion,waveCount;
             vec3 wave(vec2 p,float offset,vec3 color){
-                float x = p.x + sin((p.y*4.5 + time*1.6 + offset)*2.0) * 0.06;
-                float bend = sin((x*2.2 + time*1.1 + offset*0.8)*1.2) * yScale * 0.18;
-                float ripple = sin((x*5.6 - time*1.4 + offset*1.7)*0.75) * 0.03;
+                float x = p.x + sin((p.y*3.0 + time*1.4 + offset)*1.6) * 0.04;
+                float bend = sin((x*2.0 + time*1.0 + offset*0.8)*1.15) * yScale * 0.16;
+                float ripple = sin((x*4.2 - time*1.2 + offset*1.5)*0.7) * 0.022;
                 float dist = abs(p.y - bend - ripple);
-                float core = smoothstep(0.055, 0.0, dist);
-                float glow = smoothstep(0.14, 0.0, dist) * 0.35;
+                float core = smoothstep(0.045, 0.0, dist);
+                float glow = smoothstep(0.12, 0.0, dist) * 0.22;
                 return color * (core + glow);
             }
             void main(){
@@ -128,9 +130,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 col = max(col, wave(p,0.0,vec3(1.0,0.0,0.3)));
                 col = max(col, wave(p,1.8,vec3(0.0,0.4,1.0)));
                 col = max(col, wave(p,0.9,vec3(1.0,0.6,0.0)));
-                col = max(col, wave(p,2.7,vec3(0.6,0.0,1.0)));
-                col = max(col, wave(p,3.6,vec3(0.0,1.0,0.2)));
-                col = max(col, wave(p,4.5,vec3(0.0,1.0,1.0)));
+                if (waveCount > 3.5) { col = max(col, wave(p,2.7,vec3(0.6,0.0,1.0))); }
+                if (waveCount > 4.5) { col = max(col, wave(p,3.6,vec3(0.0,1.0,0.2))); }
+                if (waveCount > 5.5) { col = max(col, wave(p,4.5,vec3(0.0,1.0,1.0))); }
                 float centerMask = smoothstep(0.16, 0.0, abs(p.y));
                 col *= centerMask;
                 gl_FragColor=vec4(col,1.0);
@@ -188,6 +190,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const section4 = document.getElementById('section-4');
     let scrollRafPending = false;
 
+    const cullingObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            const sectionId = entry.target.getAttribute('id');
+            const visible = entry.isIntersecting;
+            if (sectionId === 'section-3') experienceVisible = visible;
+            if (sectionId === 'section-4') skillsVisible = visible;
+            window.dispatchEvent(new CustomEvent('portfolio:section-visibility', {
+                detail: { sectionId, visible }
+            }));
+        });
+        updateBackground();
+    }, { root: null, rootMargin: '18% 0px 18% 0px', threshold: 0 });
+
+    if (section3) cullingObserver.observe(section3);
+    if (section4) cullingObserver.observe(section4);
+    const enableAnimatedBackground = rainbowOpacity > 0.01 && experienceVisible;
+
     // Find the globalgamejam.org link to use as trigger point
     const ggjLink = Array.from(document.querySelectorAll('a')).find(a => a.textContent === 'globalgamejam.org');
     let ggjLinkTop = 0;
@@ -227,7 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (enableAnimatedBackground) {
             if (!shaderReady) initShader();
             shaderCanvas._startLoop && shaderCanvas._startLoop();
-            shaderCanvas.style.filter  = `blur(${transProg*24}px)`;
+            shaderCanvas.style.filter  = `blur(${transProg*8}px)`;
             shaderCanvas.style.opacity = String(rainbowOpacity);
         } else {
             shaderCanvas._stopLoop && shaderCanvas._stopLoop();
@@ -239,7 +258,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const fluidFadeStart = ggjLinkTop - window.innerHeight * 0.22;
             const fluidFadeEnd = ggjLinkTop + window.innerHeight * 0.06;
             const fluidProgress = clamp01((sy - fluidFadeStart) / (fluidFadeEnd - fluidFadeStart));
-            fluidCanvas.style.opacity = String(fluidProgress);
+            const fluidVisible = skillsVisible && fluidProgress > 0.01;
+            fluidCanvas.style.opacity = fluidVisible ? String(fluidProgress) : '0';
+            window.dispatchEvent(new CustomEvent('portfolio:fluid-visibility', {
+                detail: { visible: fluidVisible }
+            }));
         }
 
     }

@@ -18,6 +18,23 @@ const useFluidCursor = () => {
     BACK_COLOR: { r: 0.5, g: 0, b: 0 },
     TRANSPARENT: true,
   };
+  let rafId = null;
+  let sceneVisible = false;
+
+  function scheduleUpdate() {
+    if (config.PAUSED || rafId !== null) return;
+    rafId = requestAnimationFrame(update);
+  }
+
+  function setPaused(paused) {
+    config.PAUSED = paused;
+    if (paused) {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      rafId = null;
+      return;
+    }
+    scheduleUpdate();
+  }
   function pointerPrototype() {
     this.id = -1;
     this.texcoordX = 0;
@@ -125,19 +142,16 @@ const useFluidCursor = () => {
       format,
       type,
       null
+      let sceneVisible = false;
     );
     const fbo = gl.createFramebuffer();
-    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+        setPaused(document.visibilityState !== 'visible' || !sceneVisible);
     gl.framebufferTexture2D(
       gl.FRAMEBUFFER,
-      gl.COLOR_ATTACHMENT0,
-      gl.TEXTURE_2D,
-      texture,
-      0
-    );
-    const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+        sceneVisible = !!event.detail?.visible;
+        setPaused(document.visibilityState !== 'visible' || !sceneVisible);
     return status == gl.FRAMEBUFFER_COMPLETE;
-  }
+      setPaused(true);
   class Material {
     constructor(vertexShader, fragmentShaderSource) {
       this.vertexShader = vertexShader;
@@ -825,13 +839,15 @@ const useFluidCursor = () => {
   let lastUpdateTime = Date.now();
   let colorUpdateTimer = 0.0;
   function update() {
+    rafId = null;
+    if (config.PAUSED) return;
     const dt = calcDeltaTime();
     if (resizeCanvas()) initFramebuffers();
     updateColors(dt);
     applyInputs();
     step(dt);
     render(null);
-    requestAnimationFrame(update);
+    scheduleUpdate();
   }
   function calcDeltaTime() {
     let now = Date.now();
@@ -1036,7 +1052,7 @@ const useFluidCursor = () => {
     let posX = scaleByPixelRatio(e.clientX);
     let posY = scaleByPixelRatio(e.clientY);
     let color = generateColor();
-    update();
+    if (!config.PAUSED) update();
     updatePointerMoveData(pointer, posX, posY, color);
     document.body.removeEventListener('mousemove', handleFirstMouseMove);
   });
@@ -1055,7 +1071,7 @@ const useFluidCursor = () => {
       for (let i = 0; i < touches.length; i++) {
         let posX = scaleByPixelRatio(touches[i].clientX);
         let posY = scaleByPixelRatio(touches[i].clientY);
-        update();
+        if (!config.PAUSED) update();
         updatePointerDownData(pointer, touches[i].identifier, posX, posY);
       }
       document.body.removeEventListener('touchstart', handleFirstTouchStart);
@@ -1090,6 +1106,14 @@ const useFluidCursor = () => {
       updatePointerUpData(pointer);
     }
   });
+  window.addEventListener('visibilitychange', () => {
+    setPaused(document.visibilityState !== 'visible' || !sceneVisible);
+  });
+  window.addEventListener('portfolio:fluid-visibility', (event) => {
+    sceneVisible = !!event.detail?.visible;
+    setPaused(document.visibilityState !== 'visible' || !sceneVisible);
+  });
+  setPaused(true);
   function updatePointerDownData(pointer, id, posX, posY) {
     pointer.id = id;
     pointer.down = true;
