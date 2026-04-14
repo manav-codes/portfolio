@@ -241,6 +241,7 @@ body {
 
 .about-text { max-width: 700px; }
 
+.about-text p {
   font-size: 16px;
   backdrop-filter: blur(10px);
   line-height: 1.75;
@@ -431,19 +432,6 @@ body {
 
 /* ===== LIGHTING CURSOR (section-4 background) ===== */
 #section-4 { position: relative; padding-top: 100px; }
-
-#smokey-fluid-canvas {
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  width: 100vw !important;
-  height: 100vh;
-  height: 100dvh;
-  pointer-events: none !important;
-  z-index: 2 !important;
-  opacity: 0;
-  transition: opacity 0.4s ease-out;
-}
 
 .skills-grid {
   display: grid;

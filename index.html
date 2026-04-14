@@ -88,6 +88,22 @@
 </head>
 <body>
 
+  <noscript>
+    <style>
+      #shader-canvas,
+      #fluid {
+        display: none !important;
+      }
+      .fade-in,
+      .hero-animate {
+        opacity: 1 !important;
+        transform: none !important;
+        animation: none !important;
+        transition: none !important;
+      }
+    </style>
+  </noscript>
+
   <!-- WebGL Shader Background -->
   <canvas id="shader-canvas" style="position:fixed;top:0;left:0;width:100%;height:100vh;height:100dvh;display:block;z-index:0;opacity:0;"></canvas>
 
@@ -175,7 +191,7 @@
       </div>
 
       <a href="https://kabirfashions.in" target="_blank" rel="noopener noreferrer" class="kabir-preview-card">
-        <img src="./assets/images/kabir-preview.png" alt="Kabir Fashions website preview">
+        <img src="./assets/images/kabir-preview.png" alt="Kabir Fashions website preview" loading="lazy" decoding="async">
         <div class="kabir-preview-overlay">
           <span>Visit kabirfashions.in ↗</span>
         </div>
@@ -222,7 +238,7 @@
       </div>
      
       <a href="https://manav.win" target="_blank" rel="noopener noreferrer" class="kabir-preview-card">
-        <img src="./assets/images/portfolio-preview.png" alt="Portfolio website preview">
+        <img src="./assets/images/portfolio-preview.png" alt="Portfolio website preview" loading="lazy" decoding="async">
         <div class="kabir-preview-overlay">
           <span>Visit manav.win ↗</span>
         </div>
@@ -249,7 +265,7 @@
         <a href="https://globalgamejam.org/games/2026/veil-runner-2" target="_blank" rel="noopener noreferrer">globalgamejam.org</a>
       </div>
       <a href="https://globalgamejam.org/games/2026/veil-runner-2" target="_blank" rel="noopener noreferrer" class="kabir-preview-card">
-        <img src="./assets/images/Veil runner.jpeg" alt="Veil Runner game preview">
+        <img src="./assets/images/veil-runner.jpeg" alt="Veil Runner game preview" loading="lazy" decoding="async">
         <div class="kabir-preview-overlay">
           <span>View on Global Game Jam ↗</span>
         </div>
@@ -279,163 +295,163 @@
       <div class="tools-grid">
         <div class="tool-item">
           <div class="tool-icon tool-figma">
-            <img src="./assets/icons/figma.svg" width="36" height="36" alt="Figma">
+            <img src="./assets/icons/figma.svg" width="36" height="36" alt="Figma" loading="lazy" decoding="async">
           </div>
           <span>Figma</span>
         </div>
         <div class="tool-item">
           <div class="tool-icon tool-framer">
-            <img src="./assets/icons/framer.svg" width="36" height="36" alt="Framer">
+            <img src="./assets/icons/framer.svg" width="36" height="36" alt="Framer" loading="lazy" decoding="async">
           </div>
           <span>Framer</span>
         </div>
         <div class="tool-item">
           <div class="tool-icon tool-vscode">
-            <img src="./assets/icons/vscode.svg" width="36" height="36" alt="VS Code">
+            <img src="./assets/icons/vscode.svg" width="36" height="36" alt="VS Code" loading="lazy" decoding="async">
           </div>
           <span>VS Code</span>
         </div>
         <div class="tool-item">
           <div class="tool-icon tool-blender">
-            <img src="./assets/icons/blender.svg" width="36" height="36" alt="Blender">
+            <img src="./assets/icons/blender.svg" width="36" height="36" alt="Blender" loading="lazy" decoding="async">
           </div>
           <span>Blender</span>
         </div>
         <div class="tool-item">
           <div class="tool-icon tool-git">
-            <img src="./assets/icons/git.svg" width="36" height="36" alt="Git">
+            <img src="./assets/icons/git.svg" width="36" height="36" alt="Git" loading="lazy" decoding="async">
           </div>
           <span>Git</span>
         </div>
         <div class="tool-item">
           <div class="tool-icon tool-github">
-            <img src="./assets/icons/github.svg" width="36" height="36" alt="GitHub">
+            <img src="./assets/icons/github.svg" width="36" height="36" alt="GitHub" loading="lazy" decoding="async">
           </div>
           <span>GitHub</span>
         </div>
         <div class="tool-item">
           <div class="tool-icon tool-vercel">
-            <img src="./assets/icons/vercel.svg" width="36" height="36" alt="Vercel">
+            <img src="./assets/icons/vercel.svg" width="36" height="36" alt="Vercel" loading="lazy" decoding="async">
           </div>
           <span>Vercel</span>
         </div>
         <div class="tool-item">
           <div class="tool-icon tool-cloudflare">
-            <img src="./assets/icons/cloudflare.svg" width="36" height="36" alt="Cloudflare">
+            <img src="./assets/icons/cloudflare.svg" width="36" height="36" alt="Cloudflare" loading="lazy" decoding="async">
           </div>
           <span>Cloudflare</span>
         </div>
         <div class="tool-item">
           <div class="tool-icon tool-chatgpt">
-            <img src="./assets/icons/chatgpt.svg" width="36" height="36" alt="ChatGPT">
+            <img src="./assets/icons/chatgpt.svg" width="36" height="36" alt="ChatGPT" loading="lazy" decoding="async">
           </div>
           <span>ChatGPT</span>
         </div>
         <div class="tool-item">
           <div class="tool-icon tool-claude">
-            <img src="./assets/icons/claude.png" width="36" height="36" alt="Claude">
+            <img src="./assets/icons/claude.png" width="36" height="36" alt="Claude" loading="lazy" decoding="async">
           </div>
           <span>Claude</span>
         </div>
         <div class="tool-item">
           <div class="tool-icon tool-gemini">
-            <img src="./assets/icons/gemini.svg" width="36" height="36" alt="Gemini">
+            <img src="./assets/icons/gemini.svg" width="36" height="36" alt="Gemini" loading="lazy" decoding="async">
           </div>
           <span>Gemini</span>
         </div>
         <div class="tool-item">
           <div class="tool-icon tool-ollama">
-            <img src="./assets/icons/ollama.png" width="36" height="36" alt="Ollama">
+            <img src="./assets/icons/ollama.png" width="36" height="36" alt="Ollama" loading="lazy" decoding="async">
           </div>
           <span>Ollama</span>
         </div>
         <div class="tool-item">
           <div class="tool-icon tool-notion">
-            <img src="./assets/icons/notion.svg" width="36" height="36" alt="Notion">
+            <img src="./assets/icons/notion.svg" width="36" height="36" alt="Notion" loading="lazy" decoding="async">
           </div>
           <span>Notion</span>
         </div>
         <div class="tool-item">
           <div class="tool-icon tool-capcut">
-            <img src="./assets/icons/capcut.png" width="36" height="36" alt="CapCut">
+            <img src="./assets/icons/capcut.png" width="36" height="36" alt="CapCut" loading="lazy" decoding="async">
           </div>
           <span>CapCut</span>
         </div>
         <div class="tool-item">
           <div class="tool-icon tool-coderabbit">
-            <img src="./assets/icons/coderabbit.svg" width="36" height="36" alt="CodeRabbit">
+            <img src="./assets/icons/coderabbit.svg" width="36" height="36" alt="CodeRabbit" loading="lazy" decoding="async">
           </div>
           <span>CodeRabbit</span>
         </div>
         <div class="tool-item">
           <div class="tool-icon tool-kiro">
-            <img src="./assets/icons/kiro.svg" width="36" height="36" alt="Kiro">
+            <img src="./assets/icons/kiro.svg" width="36" height="36" alt="Kiro" loading="lazy" decoding="async">
           </div>
           <span>Kiro</span>
         </div>
         <div class="tool-item">
           <div class="tool-icon tool-higgsfield">
-            <img src="./assets/icons/higgsfield.svg" width="36" height="36" alt="Higgsfield">
+            <img src="./assets/icons/higgsfield.svg" width="36" height="36" alt="Higgsfield" loading="lazy" decoding="async">
           </div>
           <span>Higgsfield</span>
         </div>
         <div class="tool-item">
           <div class="tool-icon tool-python">
-            <img src="./assets/icons/python.svg" width="36" height="36" alt="Python">
+            <img src="./assets/icons/python.svg" width="36" height="36" alt="Python" loading="lazy" decoding="async">
           </div>
           <span>Python</span>
         </div>
         <div class="tool-item">
           <div class="tool-icon tool-nodejs">
-            <img src="./assets/icons/nodejs.svg" width="36" height="36" alt="Node.js">
+            <img src="./assets/icons/nodejs.svg" width="36" height="36" alt="Node.js" loading="lazy" decoding="async">
           </div>
           <span>Node.js</span>
         </div>
         <div class="tool-item">
           <div class="tool-icon tool-react">
-            <img src="./assets/icons/react.svg" width="36" height="36" alt="React">
+            <img src="./assets/icons/react.svg" width="36" height="36" alt="React" loading="lazy" decoding="async">
           </div>
           <span>React</span>
         </div>
         <div class="tool-item">
           <div class="tool-icon tool-js">
-            <img src="./assets/icons/javascript.svg" width="36" height="36" alt="JavaScript">
+            <img src="./assets/icons/javascript.svg" width="36" height="36" alt="JavaScript" loading="lazy" decoding="async">
           </div>
           <span>JavaScript</span>
         </div>
         <div class="tool-item">
           <div class="tool-icon tool-html">
-            <img src="./assets/icons/html5.svg" width="36" height="36" alt="HTML">
+            <img src="./assets/icons/html5.svg" width="36" height="36" alt="HTML" loading="lazy" decoding="async">
           </div>
           <span>HTML</span>
         </div>
         <div class="tool-item">
           <div class="tool-icon tool-css">
-            <img src="./assets/icons/css.svg" width="36" height="36" alt="CSS">
+            <img src="./assets/icons/css.svg" width="36" height="36" alt="CSS" loading="lazy" decoding="async">
           </div>
           <span>CSS</span>
         </div>
         <div class="tool-item">
           <div class="tool-icon tool-cpp">
-            <img src="./assets/icons/cplusplus.svg" width="36" height="36" alt="C++">
+            <img src="./assets/icons/cplusplus.svg" width="36" height="36" alt="C++" loading="lazy" decoding="async">
           </div>
           <span>C++</span>
         </div>
         <div class="tool-item">
           <div class="tool-icon tool-c">
-            <img src="./assets/icons/c.svg" width="36" height="36" alt="C">
+            <img src="./assets/icons/c.svg" width="36" height="36" alt="C" loading="lazy" decoding="async">
           </div>
           <span>C</span>
         </div>
         <div class="tool-item">
           <div class="tool-icon tool-kotlin">
-            <img src="./assets/icons/kotlin.svg" width="36" height="36" alt="Kotlin">
+            <img src="./assets/icons/kotlin.svg" width="36" height="36" alt="Kotlin" loading="lazy" decoding="async">
           </div>
           <span>Kotlin</span>
-          </div>
-          <div class="tool-item">
+        </div>
+        <div class="tool-item">
           <div class="tool-icon tool-huggingface">
-            <img src="./assets/icons/huggingface.svg" width="36" height="36" alt="HuggingFace">
+            <img src="./assets/icons/huggingface.svg" width="36" height="36" alt="HuggingFace" loading="lazy" decoding="async">
           </div>
           <span>Hugging Face</span>
         </div>
