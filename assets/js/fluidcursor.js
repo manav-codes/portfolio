@@ -1,9 +1,13 @@
 const useFluidCursor = () => {
   const canvas = document.getElementById('fluid');
   resizeCanvas();
+  const isLowPowerDevice =
+    /Mobi|Android/i.test(navigator.userAgent) ||
+    (navigator.hardwareConcurrency || 4) <= 4 ||
+    (navigator.deviceMemory || 4) <= 4;
   let config = {
     SIM_RESOLUTION: 128,
-    DYE_RESOLUTION: 1440,
+    DYE_RESOLUTION: isLowPowerDevice ? 512 : 1440,
     CAPTURE_RESOLUTION: 512,
     DENSITY_DISSIPATION: 3.5,
     VELOCITY_DISSIPATION: 2,
@@ -18,10 +22,6 @@ const useFluidCursor = () => {
     BACK_COLOR: { r: 0.5, g: 0, b: 0 },
     TRANSPARENT: true,
   };
-  const isLowPowerDevice =
-    /Mobi|Android/i.test(navigator.userAgent) ||
-    (navigator.hardwareConcurrency || 4) <= 4 ||
-    (navigator.deviceMemory || 4) <= 4;
   let rafId = null;
   let sceneVisible = false;
   let lastInteractionTime = performance.now();
@@ -1091,6 +1091,7 @@ const useFluidCursor = () => {
     document.body.removeEventListener('mousemove', handleFirstMouseMove);
   });
   window.addEventListener('mousemove', (e) => {
+    if (config.PAUSED) return;
     let pointer = pointers[0];
     let posX = scaleByPixelRatio(e.clientX);
     let posY = scaleByPixelRatio(e.clientY);
@@ -1119,7 +1120,7 @@ const useFluidCursor = () => {
       let posY = scaleByPixelRatio(touches[i].clientY);
       updatePointerDownData(pointer, touches[i].identifier, posX, posY);
     }
-  });
+  }, { passive: true });
   window.addEventListener(
     'touchmove',
     (e) => {
@@ -1131,7 +1132,7 @@ const useFluidCursor = () => {
         updatePointerMoveData(pointer, posX, posY, pointer.color);
       }
     },
-    false
+    { passive: true }
   );
   window.addEventListener('touchend', (e) => {
     const touches = e.changedTouches;
