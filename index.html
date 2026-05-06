@@ -38,8 +38,8 @@
   <meta name="twitter:image" content="https://manav.win/assets/images/portfolio-preview.png">
   <meta name="theme-color" content="#0d0d12">
 
-  <link rel="icon" type="image/png" sizes="32x32" href="./assets/images/MANAV.png">
-  <link rel="apple-touch-icon" href="./assets/images/MANAV.png">
+  <link rel="icon" type="image/webp" sizes="32x32" href="./assets/images/MANAV.webp">
+  <link rel="apple-touch-icon" href="./assets/images/MANAV.webp">
   <link rel="stylesheet" href="./assets/css/styles.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -196,7 +196,7 @@
       </div>
 
       <a href="https://kabirfashions.in" target="_blank" rel="noopener noreferrer" class="kabir-preview-card">
-        <img src="./assets/images/kabir-preview.png" alt="Kabir Fashions website preview" loading="lazy" decoding="async">
+        <img src="./assets/images/kabir-preview.webp" alt="Kabir Fashions website preview" loading="lazy" decoding="async">
         <div class="kabir-preview-overlay">
           <span>Visit kabirfashions.in ↗</span>
         </div>
@@ -243,7 +243,7 @@
       </div>
      
       <a href="https://manav.win" target="_blank" rel="noopener noreferrer" class="kabir-preview-card">
-        <img src="./assets/images/portfolio-preview.png" alt="Portfolio website preview" loading="lazy" decoding="async">
+        <img src="./assets/images/portfolio-preview.webp" alt="Portfolio website preview" loading="lazy" decoding="async">
         <div class="kabir-preview-overlay">
           <span>Visit manav.win ↗</span>
         </div>
@@ -291,7 +291,7 @@
         <li>Competed at regional level — finished Runner Up out of the competing teams</li>
       </ul>
       <div class="kabir-preview-card" style="cursor:default;">
-        <img src="./assets/images/lego.png" alt="WRO 2019 LEGO EV3 robot build" loading="lazy" decoding="async">
+        <img src="./assets/images/lego.webp" alt="WRO 2019 LEGO EV3 robot build" loading="lazy" decoding="async">
         <div class="kabir-preview-overlay">
           <span>WRO 2019 — Runner Up ↗</span>
         </div>
@@ -304,32 +304,27 @@
       <p class="subtitle">PetCaria — Smart Pet Health Tracker | 36HR Hackathon · Team Code Heist</p>
       <p>Pets can't tell you when something's wrong — and by the time owners notice, it's often too late. PetCaria is an AI-based smart pet health tracking system built to solve exactly that, shipped end-to-end in 36 hours.</p>
       <p>The system monitors a pet's vitals in real time — heart rate, SpO₂, and body temperature — streams the data over Bluetooth to a mobile app, and fires an emergency alert the moment readings cross a danger threshold. GPS tracking keeps tabs on location and triggers a notification if the pet wanders outside a safe zone.</p>
-      <p>Built the entire IoT stack from scratch in 36 hours — wired the sensors, wrote the firmware, got the ESP32 talking to the app, and shipped a working prototype by the end of it.</p>
+      <p>Built the entire IoT stack from scratch in 36 hours using an ESP32 microcontroller, and shipped a working prototype by the end of it.</p>
       <ul class="experience-bullets">
-        <li>Wired and programmed an ESP32 microcontroller with MAX30105 (heart rate + SpO₂) and LM35 (temperature) sensors on a breadboard prototype</li>
-        <li>Established real-time Bluetooth communication between the hardware and a Flutter mobile app</li>
+        <li>Built the system using an ESP32 microcontroller with real-time Bluetooth communication to a Flutter mobile app</li>
         <li>Built a live health dashboard displaying heart rate, temperature, oxygen levels, activity, and predicted mood state</li>
         <li>Implemented threshold-based alert logic to fire push notifications when vitals go abnormal</li>
         <li>Designed GPS geofencing to notify owners the moment a pet leaves a defined safe zone</li>
-        <li>Architected the full system stack end-to-end: sensors → ESP32 → FastAPI backend → Firebase → Flutter app</li>
+        <li>Architected the full system stack end-to-end: ESP32 → FastAPI backend → Firebase → Flutter app</li>
         <li>Proposed an ML anomaly detection layer for learning normal behavior patterns and flagging distress signals</li>
       </ul>
-      <div class="project-link">
-        <span style="color: var(--yellow);">The project: </span>
-        <a href="https://drive.google.com/drive/folders/1th1Y8T5o1I9QVWE7AXZKSg5ntsVIAmc9?usp=drive_link" target="_blank" rel="noopener noreferrer">View demo:</a>
+      <div class="kabir-preview-card" style="cursor:default;">
+        <img src="./assets/images/esp32.png" alt="PetCaria ESP32 setup" loading="lazy" decoding="async" style="aspect-ratio: 800/445; object-fit: cover; object-position: center;">
+        <div class="kabir-preview-overlay">
+          <span>PetCaria — ESP32 IoT</span>
+        </div>
       </div>
-      <a href="https://drive.google.com/drive/folders/1th1Y8T5o1I9QVWE7AXZKSg5ntsVIAmc9?usp=drive_link" target="_blank" rel="noopener noreferrer" class="kabir-preview-card">
-        <img src="./assets/images/SmartTracker.png" alt="PetCaria IoT hardware prototype" loading="lazy" decoding="async" style="aspect-ratio: 800/445; object-fit: cover; object-position: center;">
+      <div class="kabir-preview-card" style="cursor:default; margin-top: 12px;">
+        <img src="./assets/images/app.webp" alt="PetCaria Flutter mobile app dashboard" loading="lazy" decoding="async" style="aspect-ratio: 800/445; object-fit: cover; object-position: center top;">
         <div class="kabir-preview-overlay">
-          <span>View PetCaria Project ↗</span>
+          <span>PetCaria — Flutter App</span>
         </div>
-      </a>
-      <a href="https://drive.google.com/drive/folders/1th1Y8T5o1I9QVWE7AXZKSg5ntsVIAmc9?usp=drive_link" target="_blank" rel="noopener noreferrer" class="kabir-preview-card" style="margin-top: 12px;">
-        <img src="./assets/images/app.png" alt="PetCaria Flutter mobile app dashboard" loading="lazy" decoding="async" style="aspect-ratio: 800/445; object-fit: cover; object-position: center top;">
-        <div class="kabir-preview-overlay">
-          <span>View PetCaria Project ↗</span>
-        </div>
-      </a>
+      </div>
     </div>
 
   </section>
